@@ -18,6 +18,8 @@ const MIME_TYPES = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".map": "application/json; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".otf": "font/otf",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".txt": "text/plain; charset=utf-8",
@@ -28,9 +30,30 @@ const MIME_TYPES = {
   ".xml": "application/xml; charset=utf-8"
 };
 
+const STATIC_ASSET_PREFIXES = [
+  "/assets/",
+  "/features/",
+  "/fonts/",
+  "/template-snapshots/"
+];
+
 function getContentType(filePath) {
   const extension = extname(filePath).toLowerCase();
   return MIME_TYPES[extension] || "application/octet-stream";
+}
+
+function isStaticAssetPath(pathname) {
+  return (
+    STATIC_ASSET_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    extname(pathname).toLowerCase() in MIME_TYPES
+  );
+}
+
+function respondStaticNotFound(res) {
+  res.statusCode = 404;
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.end("Not Found");
 }
 
 function toHeaders(nodeHeaders) {
@@ -60,7 +83,13 @@ function resolveStaticFile(pathname) {
 function tryServeStatic(req, res, url) {
   if (!url.pathname || url.pathname.endsWith("/")) return false;
   const filePath = resolveStaticFile(url.pathname);
-  if (!filePath) return false;
+  if (!filePath) {
+    if (isStaticAssetPath(url.pathname)) {
+      respondStaticNotFound(res);
+      return true;
+    }
+    return false;
+  }
 
   res.statusCode = 200;
   res.setHeader("Content-Type", getContentType(filePath));

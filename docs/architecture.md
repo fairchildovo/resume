@@ -1,10 +1,10 @@
-# Magic Resume Architecture
+# Tian Resume Architecture
 
 本文档记录当前项目结构和维护边界。内容来自仓库现有文件，不代表未来计划。
 
 ## 项目定位
 
-Magic Resume 是一个基于 TanStack Start 的在线简历编辑器。核心能力包括：
+Tian Resume 是一个基于 TanStack Start 的在线简历编辑器。核心能力包括：
 
 - 简历创建、编辑、复制、删除和本地持久化。
 - 多模板 A4 简历预览。
@@ -52,7 +52,7 @@ pnpm build
 node server.mjs
 ```
 
-`server.mjs` 从 `dist/client` 提供静态文件，再把非静态请求交给 `dist/server/server.js` 的 `fetch` handler。Docker 镜像也使用这个 Node server。
+`server.mjs` 从 `dist/client` 提供静态文件，再把非静态请求交给 `dist/server/server.js` 的 `fetch` handler。静态资源请求缺失时必须返回 `404`，不能回退到 SSR HTML。Docker 镜像也使用这个 Node server。
 
 Cloudflare Workers 配置在 `wrangler.toml`：入口为 `dist/server/server.js`，静态资源目录为 `dist/client`，启用 `nodejs_compat`。
 
@@ -309,8 +309,8 @@ Cloudflare:
 Minimum checks by change type:
 
 - Documentation-only: `pnpm build` when practical, plus `git diff --check`.
+- Node server static serving changes: `pnpm build` and `pnpm test:server`.
 - Type/domain/store changes: `pnpm build`.
 - Routing/workbench/template changes: `pnpm build` and browser smoke test at `http://localhost:3000`.
 - Export changes: verify PDF or browser print path with a real resume.
 - AI route changes: verify success and upstream failure responses with redacted credentials.
-

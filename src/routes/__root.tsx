@@ -24,26 +24,35 @@ export const Route = createRootRoute({
         name: "viewport",
         content: "width=device-width, initial-scale=1"
       },
-      { title: "Magic Resume" }
+      { title: "Tian Resume" }
     ],
     links: [
       {
         rel: "stylesheet",
-        href: appCss
+        href: getStylesheetHref(appCss)
       },
       {
         rel: "stylesheet",
-        href: appFontCss
+        href: getStylesheetHref(appFontCss)
       },
       {
         rel: "stylesheet",
-        href: tiptapCss
+        href: getStylesheetHref(tiptapCss)
       }
     ]
   }),
   component: RootComponent,
   notFoundComponent: RootNotFound
 });
+
+function getStylesheetHref(href: string) {
+  if (!import.meta.env.DEV || !href.startsWith("/src/")) {
+    return href;
+  }
+
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}direct`;
+}
 
 function RootComponent() {
   const pathname = useLocation({

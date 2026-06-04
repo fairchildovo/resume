@@ -1,9 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ProxyAgent, setGlobalDispatcher } from "undici";
 
 let proxyDispatcherInitialized = false;
 
-export const ensureGeminiProxyDispatcher = () => {
+const importUndici = async () => {
+  const packageName = "undici";
+  return import(packageName) as Promise<typeof import("undici")>;
+};
+
+export const ensureGeminiProxyDispatcher = async () => {
   if (proxyDispatcherInitialized) return;
 
   const proxyUrl =
@@ -12,12 +16,13 @@ export const ensureGeminiProxyDispatcher = () => {
     process.env.HTTP_PROXY ||
     process.env.http_proxy;
 
-  if (!proxyUrl) {
+  if (!proxyUrl || typeof MessagePort === "undefined") {
     proxyDispatcherInitialized = true;
     return;
   }
 
   try {
+    const { ProxyAgent, setGlobalDispatcher } = await importUndici();
     setGlobalDispatcher(new ProxyAgent(proxyUrl));
   } catch (error) {
     console.warn("Failed to initialize proxy dispatcher for Gemini:", error);
@@ -32,7 +37,6 @@ export const getGeminiModelInstance = (params: {
   systemInstruction?: string;
   generationConfig?: Record<string, unknown>;
 }) => {
-  ensureGeminiProxyDispatcher();
   const genAI = new GoogleGenerativeAI(params.apiKey);
 
   return genAI.getGenerativeModel({

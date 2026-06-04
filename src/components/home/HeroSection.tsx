@@ -4,7 +4,6 @@ import { Sparkles, ArrowRight, Play } from "lucide-react";
 import ScrollBackground from "./client/ScrollBackground";
 import AnimatedFeature from "./client/AnimatedFeature";
 import GoDashboard from "./GoDashboard";
-import Image from "@/lib/image";
 
 export default function HeroSection() {
   const t = useTranslations("home");
@@ -55,22 +54,6 @@ export default function HeroSection() {
                 {t("hero.secondary")}
               </Button>
             </GoDashboard>
-          </div>
-        </AnimatedFeature>
-
-        <AnimatedFeature delay={0.3}>
-          <div className="mt-20 relative px-4 sm:px-0">
-             <div className="absolute -inset-4 bg-gradient-to-b from-primary/5 to-transparent rounded-[3rem] blur-2xl -z-10" />
-             <div className="relative rounded-3xl border border-border/50 bg-secondary/30 p-2 sm:p-4 backdrop-blur-sm shadow-2xl overflow-hidden group">
-                <Image
-                  src="/web-shot.png"
-                  alt="Resume Editor Preview"
-                  width={1200}
-                  height={800}
-                  className="rounded-2xl shadow-sm group-hover:scale-[1.01] transition-transform duration-700"
-                  priority
-                />
-             </div>
           </div>
         </AnimatedFeature>
       </div>

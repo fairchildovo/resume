@@ -41,16 +41,16 @@ export const Route = createFileRoute("/$locale")({
         { name: "description", content: seo.description },
         { name: "robots", content: "index,follow" },
         { property: "og:type", content: "website" },
-        { property: "og:site_name", content: "Magic Resume" },
+        { property: "og:site_name", content: "Tian Resume" },
         { property: "og:title", content: seo.title },
         { property: "og:description", content: seo.description },
         { property: "og:locale", content: seo.localeTag },
         { property: "og:url", content: seo.canonical },
-        { property: "og:image", content: `${SEO_BASE_URL}/web-shot.png` },
+        { property: "og:image", content: `${SEO_BASE_URL}/logo.svg` },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: seo.title },
         { name: "twitter:description", content: seo.description },
-        { name: "twitter:image", content: `${SEO_BASE_URL}/web-shot.png` }
+        { name: "twitter:image", content: `${SEO_BASE_URL}/logo.svg` }
       ],
       links: [
         { rel: "canonical", href: seo.canonical },
