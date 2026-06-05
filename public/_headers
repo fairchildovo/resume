@@ -1,2 +1,35 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/template-snapshots/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/features/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/avatar.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/icon.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/web-shot.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/logo.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/vercel.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/favicon.ico
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/robots.txt
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600, must-revalidate

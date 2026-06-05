@@ -1,5 +1,11 @@
 # Change Log
 
+## 2026-06-05 - Expand static asset cache policy
+
+- Change: expanded Cloudflare `_headers` caching beyond hashed Vite assets to include local fonts, template screenshots, feature media, favicon/logo assets, `robots.txt`, and `sitemap.xml`.
+- Change: mirrored the same cache policy in `server.mjs` for Docker/local production serving.
+- Guard: added server/static tests for Cloudflare `_headers` rules, duplicate header-rule matching, and Node cache headers on heavy public assets.
+
 ## 2026-06-05 - Restore original site icon
 
 - Change: restored the original `favicon.ico`, `icon.png`, and `logo.svg` assets from the project baseline.

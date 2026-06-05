@@ -37,6 +37,14 @@ const STATIC_ASSET_PREFIXES = [
   "/template-snapshots/"
 ];
 
+const CACHE_CONTROL = {
+  immutable: "public, max-age=31536000, immutable",
+  rootMedia: "public, max-age=86400, stale-while-revalidate=604800",
+  featureMedia: "public, max-age=604800, stale-while-revalidate=2592000",
+  metadata: "public, max-age=3600, must-revalidate",
+  short: "public, max-age=3600"
+};
+
 function getContentType(filePath) {
   const extension = extname(filePath).toLowerCase();
   return MIME_TYPES[extension] || "application/octet-stream";
@@ -54,6 +62,30 @@ function respondStaticNotFound(res) {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.end("Not Found");
+}
+
+function getStaticCacheControl(pathname) {
+  if (pathname.startsWith("/assets/") || pathname.startsWith("/fonts/")) {
+    return CACHE_CONTROL.immutable;
+  }
+
+  if (pathname.startsWith("/template-snapshots/")) {
+    return CACHE_CONTROL.rootMedia;
+  }
+
+  if (pathname.startsWith("/features/")) {
+    return CACHE_CONTROL.featureMedia;
+  }
+
+  if (pathname === "/robots.txt" || pathname === "/sitemap.xml") {
+    return CACHE_CONTROL.metadata;
+  }
+
+  if ([".ico", ".png", ".svg", ".webp"].includes(extname(pathname).toLowerCase())) {
+    return CACHE_CONTROL.rootMedia;
+  }
+
+  return CACHE_CONTROL.short;
 }
 
 function toHeaders(nodeHeaders) {
@@ -93,11 +125,7 @@ function tryServeStatic(req, res, url) {
 
   res.statusCode = 200;
   res.setHeader("Content-Type", getContentType(filePath));
-  if (url.pathname.startsWith("/assets/")) {
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-  } else {
-    res.setHeader("Cache-Control", "public, max-age=3600");
-  }
+  res.setHeader("Cache-Control", getStaticCacheControl(url.pathname));
 
   if (req.method === "HEAD") {
     res.end();

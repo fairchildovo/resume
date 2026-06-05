@@ -56,6 +56,13 @@ node server.mjs
 
 Cloudflare Workers 配置在 `wrangler.toml`：入口为 `dist/server/server.js`，静态资源目录为 `dist/client`，启用 `nodejs_compat`。`src/server.ts` 是 TanStack Start server entry，负责在 Worker/SSR 层拦截缺失静态资源，避免 `/assets/*.css`、`/fonts/*` 等请求回退成 SSR HTML。
 
+Static cache policy:
+
+- `public/_headers` controls Cloudflare Static Assets response headers.
+- Fingerprinted Vite assets under `/assets/*` and local font files under `/fonts/*` use `public, max-age=31536000, immutable`.
+- Template screenshots and root media assets use shorter browser cache plus `stale-while-revalidate` so repeated visits are faster without locking users to old brand images for a year.
+- Node/Docker runtime must mirror these static cache rules in `server.mjs`; SSR HTML and API responses should not receive long-lived static cache headers.
+
 ## Source Layout
 
 ```text
@@ -293,6 +300,7 @@ Docker:
 Cloudflare:
 
 - `wrangler.toml` uses `dist/server/server.js` plus `dist/client` assets.
+- Static asset cache headers are authored in `public/_headers` and copied to `dist/client/_headers` during build.
 
 ## Maintenance Guidelines
 

@@ -15,6 +15,63 @@ async function findBuiltAsset(predicate) {
   return `/assets/${filename}`;
 }
 
+function parseHeadersFile(body) {
+  const rules = new Map();
+  let currentRule = null;
+
+  for (const line of body.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    if (!/^\s/.test(line)) {
+      currentRule = trimmed;
+      rules.set(currentRule, new Map());
+      continue;
+    }
+
+    if (!currentRule) {
+      throw new Error(`Header without a rule: ${line}`);
+    }
+
+    const separatorIndex = trimmed.indexOf(":");
+    if (separatorIndex < 0) {
+      throw new Error(`Invalid header line: ${line}`);
+    }
+
+    const name = trimmed.slice(0, separatorIndex);
+    const value = trimmed.slice(separatorIndex + 1).trim();
+    rules.get(currentRule).set(name, value);
+  }
+
+  return rules;
+}
+
+function assertCacheRule(rules, path, expected) {
+  assert.equal(rules.get(path)?.get("Cache-Control"), expected);
+}
+
+function matchesHeadersPath(rulePath, requestPath) {
+  if (!rulePath.includes("*")) return rulePath === requestPath;
+  const pattern = rulePath
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*");
+
+  return new RegExp(`^${pattern}$`).test(requestPath);
+}
+
+function countMatchingCacheRules(rules, requestPath) {
+  let count = 0;
+
+  for (const [rulePath, headers] of rules) {
+    if (headers.has("Cache-Control") && matchesHeadersPath(rulePath, requestPath)) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
 async function getFreePort() {
   const server = createServer();
 
@@ -74,6 +131,41 @@ async function startServer(port) {
   return child;
 }
 
+test("Cloudflare static headers cache heavy public asset groups", async () => {
+  const rules = parseHeadersFile(await readFile("public/_headers", "utf8"));
+
+  assertCacheRule(rules, "/assets/*", "public, max-age=31536000, immutable");
+  assertCacheRule(rules, "/fonts/*", "public, max-age=31536000, immutable");
+  assertCacheRule(
+    rules,
+    "/template-snapshots/*",
+    "public, max-age=86400, stale-while-revalidate=604800"
+  );
+  assertCacheRule(
+    rules,
+    "/features/*",
+    "public, max-age=604800, stale-while-revalidate=2592000"
+  );
+  assertCacheRule(rules, "/avatar.png", "public, max-age=86400, stale-while-revalidate=604800");
+  assertCacheRule(rules, "/icon.png", "public, max-age=86400, stale-while-revalidate=604800");
+  assertCacheRule(rules, "/web-shot.png", "public, max-age=86400, stale-while-revalidate=604800");
+  assertCacheRule(rules, "/logo.svg", "public, max-age=86400, stale-while-revalidate=604800");
+  assertCacheRule(rules, "/favicon.ico", "public, max-age=86400, stale-while-revalidate=604800");
+  assertCacheRule(rules, "/robots.txt", "public, max-age=3600, must-revalidate");
+  assertCacheRule(rules, "/sitemap.xml", "public, max-age=3600, must-revalidate");
+
+  for (const path of [
+    "/assets/main-example.js",
+    "/fonts/MiSans-Normal.ttf",
+    "/template-snapshots/zh/classic.png",
+    "/features/grammar.png",
+    "/logo.svg",
+    "/sitemap.xml"
+  ]) {
+    assert.equal(countMatchingCacheRules(rules, path), 1);
+  }
+});
+
 test("missing built assets return 404 instead of SSR HTML", async () => {
   const port = await getFreePort();
   const server = await startServer(port);
@@ -96,6 +188,39 @@ test("missing built assets return 404 instead of SSR HTML", async () => {
       assert.equal(response.status, 404);
       assert.notEqual(response.headers.get("content-type"), "text/html; charset=utf-8");
       assert.equal(body.includes("<!DOCTYPE html>"), false);
+    }
+  } finally {
+    server.kill();
+  }
+});
+
+test("node server applies cache headers to heavy public asset groups", async () => {
+  const port = await getFreePort();
+  const server = await startServer(port);
+
+  try {
+    const cssPath = await findBuiltAsset(
+      (filename) => filename.startsWith("globals-") && filename.endsWith(".css")
+    );
+    const cases = [
+      [cssPath, "public, max-age=31536000, immutable"],
+      ["/fonts/MiSans-Normal.ttf", "public, max-age=31536000, immutable"],
+      [
+        "/template-snapshots/zh/classic.png",
+        "public, max-age=86400, stale-while-revalidate=604800"
+      ],
+      ["/features/grammar.png", "public, max-age=604800, stale-while-revalidate=2592000"],
+      ["/logo.svg", "public, max-age=86400, stale-while-revalidate=604800"],
+      ["/sitemap.xml", "public, max-age=3600, must-revalidate"]
+    ];
+
+    for (const [pathname, expectedCacheControl] of cases) {
+      const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
+        method: "HEAD"
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), expectedCacheControl);
     }
   } finally {
     server.kill();
