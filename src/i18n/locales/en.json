@@ -203,7 +203,7 @@
           "description": "Obtain the API key at OpenAI or an open platform compatible with the OpenAI format",
           "apiKey": "OpenAI API Key",
           "modelId": "Model ID",
-          "apiEndpoint": "API Endpoint, example: https://openai.example.org/v1"
+          "apiEndpoint": "API Endpoint, example: https://api.tianzora.uno/v1"
         },
         "gemini": {
           "title": "Gemini",
