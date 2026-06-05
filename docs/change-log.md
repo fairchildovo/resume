@@ -1,5 +1,12 @@
 # Change Log
 
+## 2026-06-05 - Tune Cloudflare Worker routing and public-page caching
+
+- Change: configured `wrangler.toml` `run_worker_first` so SSR/API routes enter the Worker while static assets bypass Worker execution.
+- Change: added short Cloudflare edge caching for public landing pages `/zh` and `/en`.
+- Safety: dashboard and API routes now get `Cache-Control: no-store`; static asset 404 behavior remains plain `404`.
+- Guard: added server/static tests for Worker routing config, public-page cache headers, private route cache headers, and Worker cache hits.
+
 ## 2026-06-05 - Expand static asset cache policy
 
 - Change: expanded Cloudflare `_headers` caching beyond hashed Vite assets to include local fonts, template screenshots, feature media, favicon/logo assets, `robots.txt`, and `sitemap.xml`.

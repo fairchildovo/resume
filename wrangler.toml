@@ -5,3 +5,18 @@ compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "dist/client"
+run_worker_first = [
+  "/*",
+  "!/assets/*",
+  "!/fonts/*",
+  "!/template-snapshots/*",
+  "!/features/*",
+  "!/avatar.png",
+  "!/icon.png",
+  "!/web-shot.png",
+  "!/logo.svg",
+  "!/vercel.svg",
+  "!/favicon.ico",
+  "!/robots.txt",
+  "!/sitemap.xml"
+]

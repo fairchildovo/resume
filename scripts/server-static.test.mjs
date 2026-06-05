@@ -72,6 +72,13 @@ function countMatchingCacheRules(rules, requestPath) {
   return count;
 }
 
+function parseWranglerRunWorkerFirst(body) {
+  const match = body.match(/run_worker_first\s*=\s*\[([\s\S]*?)\]/);
+  if (!match) return [];
+
+  return Array.from(match[1].matchAll(/"([^"]+)"/g), (item) => item[1]);
+}
+
 async function getFreePort() {
   const server = createServer();
 
@@ -166,6 +173,28 @@ test("Cloudflare static headers cache heavy public asset groups", async () => {
   }
 });
 
+test("Cloudflare routes public app traffic through Worker while static assets bypass it", async () => {
+  const config = await readFile("wrangler.toml", "utf8");
+  const workerFirstRoutes = parseWranglerRunWorkerFirst(config);
+
+  assert.deepEqual(workerFirstRoutes, [
+    "/*",
+    "!/assets/*",
+    "!/fonts/*",
+    "!/template-snapshots/*",
+    "!/features/*",
+    "!/avatar.png",
+    "!/icon.png",
+    "!/web-shot.png",
+    "!/logo.svg",
+    "!/vercel.svg",
+    "!/favicon.ico",
+    "!/robots.txt",
+    "!/sitemap.xml"
+  ]);
+  assert.equal(config.includes("not_found_handling"), false);
+});
+
 test("missing built assets return 404 instead of SSR HTML", async () => {
   const port = await getFreePort();
   const server = await startServer(port);
@@ -224,6 +253,85 @@ test("node server applies cache headers to heavy public asset groups", async () 
     }
   } finally {
     server.kill();
+  }
+});
+
+test("worker caches public landing HTML but keeps app and API responses private", async () => {
+  const serverEntry = await import("../dist/server/server.js");
+
+  const publicResponse = await serverEntry.default.fetch(
+    new Request("http://local.test/zh", {
+      headers: {
+        accept: "text/html"
+      }
+    })
+  );
+
+  assert.equal(
+    publicResponse.headers.get("cache-control"),
+    "public, max-age=0, s-maxage=300, stale-while-revalidate=3600"
+  );
+
+  const appResponse = await serverEntry.default.fetch(
+    new Request("http://local.test/app/dashboard/resumes")
+  );
+
+  assert.equal(appResponse.headers.get("cache-control"), "no-store");
+
+  const apiResponse = await serverEntry.default.fetch(
+    new Request("http://local.test/api/grammar")
+  );
+
+  assert.equal(apiResponse.headers.get("cache-control"), "no-store");
+});
+
+test("worker can serve cached public landing HTML before rendering", async () => {
+  const serverEntry = await import("../dist/server/server.js");
+  const originalCaches = globalThis.caches;
+  let matchCalls = 0;
+  let putCalls = 0;
+
+  globalThis.caches = {
+    default: {
+      async match() {
+        matchCalls += 1;
+        return new Response("cached landing", {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=3600"
+          }
+        });
+      },
+      async put() {
+        putCalls += 1;
+      }
+    }
+  };
+
+  try {
+    const response = await serverEntry.default.fetch(
+      new Request("http://local.test/en", {
+        headers: {
+          accept: "text/html"
+        }
+      }),
+      {},
+      {
+        waitUntil() {
+          throw new Error("cache hit should not schedule cache put");
+        }
+      }
+    );
+
+    assert.equal(await response.text(), "cached landing");
+    assert.equal(matchCalls, 1);
+    assert.equal(putCalls, 0);
+  } finally {
+    if (typeof originalCaches === "undefined") {
+      delete globalThis.caches;
+    } else {
+      globalThis.caches = originalCaches;
+    }
   }
 });
 

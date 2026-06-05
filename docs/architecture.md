@@ -54,13 +54,15 @@ node server.mjs
 
 `server.mjs` 从 `dist/client` 提供静态文件，再把非静态请求交给 `dist/server/server.js` 的 `fetch` handler。静态资源请求缺失时必须返回 `404`，不能回退到 SSR HTML。Docker 镜像也使用这个 Node server。
 
-Cloudflare Workers 配置在 `wrangler.toml`：入口为 `dist/server/server.js`，静态资源目录为 `dist/client`，启用 `nodejs_compat`。`src/server.ts` 是 TanStack Start server entry，负责在 Worker/SSR 层拦截缺失静态资源，避免 `/assets/*.css`、`/fonts/*` 等请求回退成 SSR HTML。
+Cloudflare Workers 配置在 `wrangler.toml`：入口为 `dist/server/server.js`，静态资源目录为 `dist/client`，启用 `nodejs_compat`。`run_worker_first` 让页面和 API 请求先进 Worker，同时排除 `/assets/*`、`/fonts/*`、模板截图和根目录媒体文件，让这些静态资源直接走 Cloudflare Static Assets。`src/server.ts` 是 TanStack Start server entry，负责在 Worker/SSR 层拦截缺失静态资源，避免 `/assets/*.css`、`/fonts/*` 等请求回退成 SSR HTML。
 
 Static cache policy:
 
 - `public/_headers` controls Cloudflare Static Assets response headers.
 - Fingerprinted Vite assets under `/assets/*` and local font files under `/fonts/*` use `public, max-age=31536000, immutable`.
 - Template screenshots and root media assets use shorter browser cache plus `stale-while-revalidate` so repeated visits are faster without locking users to old brand images for a year.
+- Public landing pages `/zh` and `/en` use short Worker-side edge caching: `public, max-age=0, s-maxage=300, stale-while-revalidate=3600`.
+- Dashboard and API paths must stay private with `Cache-Control: no-store`.
 - Node/Docker runtime must mirror these static cache rules in `server.mjs`; SSR HTML and API responses should not receive long-lived static cache headers.
 
 ## Source Layout
@@ -300,6 +302,7 @@ Docker:
 Cloudflare:
 
 - `wrangler.toml` uses `dist/server/server.js` plus `dist/client` assets.
+- `wrangler.toml` must keep static asset exclusions in `run_worker_first` so heavy files do not invoke the Worker.
 - Static asset cache headers are authored in `public/_headers` and copied to `dist/client/_headers` during build.
 
 ## Maintenance Guidelines
