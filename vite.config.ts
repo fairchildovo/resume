@@ -19,6 +19,9 @@ export default defineConfig({
       srcDirectory: "src",
       router: {
         routesDirectory: "routes"
+      },
+      server: {
+        entry: "server"
       }
     }),
     viteReact()

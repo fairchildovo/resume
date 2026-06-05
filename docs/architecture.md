@@ -54,7 +54,7 @@ node server.mjs
 
 `server.mjs` 从 `dist/client` 提供静态文件，再把非静态请求交给 `dist/server/server.js` 的 `fetch` handler。静态资源请求缺失时必须返回 `404`，不能回退到 SSR HTML。Docker 镜像也使用这个 Node server。
 
-Cloudflare Workers 配置在 `wrangler.toml`：入口为 `dist/server/server.js`，静态资源目录为 `dist/client`，启用 `nodejs_compat`。
+Cloudflare Workers 配置在 `wrangler.toml`：入口为 `dist/server/server.js`，静态资源目录为 `dist/client`，启用 `nodejs_compat`。`src/server.ts` 是 TanStack Start server entry，负责在 Worker/SSR 层拦截缺失静态资源，避免 `/assets/*.css`、`/fonts/*` 等请求回退成 SSR HTML。
 
 ## Source Layout
 
@@ -266,6 +266,7 @@ Fonts:
 
 - Source Han, Noto Sans SC, MiSans, Alibaba PuHuiTi under `public/fonts`.
 - `fonts/` contains additional server/container font files.
+- Do not use remote CSS `@import` in `globals.css`; first-paint fonts should come from `font.css` and local static files.
 
 Template and export changes should be checked with realistic Chinese and English resume text because font fallback and CJK line wrapping affect A4 pagination.
 
@@ -309,7 +310,7 @@ Cloudflare:
 Minimum checks by change type:
 
 - Documentation-only: `pnpm build` when practical, plus `git diff --check`.
-- Node server static serving changes: `pnpm build` and `pnpm test:server`.
+- Node server or Worker static serving changes: `pnpm build` and `pnpm test:server`.
 - Type/domain/store changes: `pnpm build`.
 - Routing/workbench/template changes: `pnpm build` and browser smoke test at `http://localhost:3000`.
 - Export changes: verify PDF or browser print path with a real resume.

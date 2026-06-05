@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { createServer } from "node:http";
 import test from "node:test";
 
@@ -135,5 +135,39 @@ test("built assets and SSR pages return distinct content types", async () => {
     assert.equal(pageBody.includes("<!DOCTYPE html>"), true);
   } finally {
     server.kill();
+  }
+});
+
+test("built global stylesheet does not block on remote imports", async () => {
+  const cssPath = await findBuiltAsset(
+    (filename) => filename.startsWith("globals-") && filename.endsWith(".css")
+  );
+  const cssBody = await readFile(`dist/client${cssPath}`, "utf8");
+
+  assert.equal(cssBody.includes("@import"), false);
+  assert.equal(cssBody.includes("fonts.googleapis.com"), false);
+});
+
+test("server entry returns plain 404 for missing static assets", async () => {
+  const serverEntry = await import("../dist/server/server.js");
+  const paths = [
+    "/assets/__missing-refresh-regression__.css",
+    "/assets/__missing-refresh-regression__.js",
+    "/fonts/__missing-refresh-regression__.woff2"
+  ];
+
+  for (const pathname of paths) {
+    const response = await serverEntry.default.fetch(
+      new Request(`http://local.test${pathname}`, {
+        headers: {
+          accept: "*/*"
+        }
+      })
+    );
+    const body = await response.text();
+
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
+    assert.equal(body.includes("<!DOCTYPE html>"), false);
   }
 });
